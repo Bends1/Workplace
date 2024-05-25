@@ -8,8 +8,9 @@ interface Draw {
     fun drawUserInterface()
     fun drawMenuTests()
     fun drawEnter()
-    fun drawTest(testsRepository: TestsRepositoryImpl)
+    fun drawTest(questions: Pair<List<Pair<String, Int>>, List<Map<out String?, Int>>>, operand : Operations)
 }
+
 interface UserData {
     fun loadDataUser(fileName: String): MutableList<User>
     fun createUser(name: String?, password: String?, list: MutableList<User>): User
@@ -21,8 +22,9 @@ interface UserData {
         operationType: String,
         newValue: String?
     )
-    fun getUsers() : MutableList<User>
-    fun getUser(name : String?, password: String?, list: MutableList<User>) : User
+
+    fun getUsers(): MutableList<User>
+    fun getUser(name: String?, password: String?, list: MutableList<User>): User
     fun saveResults(
         user: User,
         userList: MutableList<User>,
@@ -37,12 +39,151 @@ interface UserInterface {
     fun registration(userList: MutableList<User>)
     fun onNameChange(user: User)
     fun onPasswordChange(user: User)
-    fun onChekedValid(input : String?, value: String, userList: MutableList<User>)
+    fun onChekedValid(input: String?, value: String, userList: MutableList<User>)
 }
+
 interface TestsRepository {
-    val questions : List<Pair<String, Int>>
-    val variants : List<Map<out String?, Int>>
+    fun getQustions(operand: Operations): Pair<List<Pair<String, Int>>, List<Map<out String?, Int>>>
 }
+
+class TestsRepositoryImpl : TestsRepository {
+    override fun getQustions(operand: Operations): Pair<List<Pair<String, Int>>, List<Map<out String?, Int>>> {
+        when (operand) {
+            Operations.PLUS -> {
+                return Pair(
+                    listOf(
+                        Pair("Скільки буде 2 + 2?", 4),
+                        Pair("Скільки буде 5 + 3?", 8),
+                        Pair("Яка сума 10 і 5?", 15),
+                        Pair("Яка сума 6 і 4?", 10),
+                        Pair("Скільки буде 24 + 4?", 28),
+                    ),
+                    listOf(
+                        mapOf(
+                            "а" to 4,
+                            "б" to 5,
+                            "в" to 6,
+                            "г" to 8,
+                        ),
+                        mapOf(
+                            "а" to 7,
+                            "б" to 9,
+                            "в" to 8,
+                            "г" to 10,
+                        ),
+                        mapOf(
+                            "а" to 13,
+                            "б" to 14,
+                            "в" to 15,
+                            "г" to 18,
+                        ),
+                        mapOf(
+                            "а" to 10,
+                            "б" to 15,
+                            "в" to 6,
+                            "г" to 9,
+                        ),
+                        mapOf(
+                            "а" to 24,
+                            "б" to 28,
+                            "в" to 29,
+                            "г" to 30,
+                        ),
+                    )
+                )
+            }
+
+            Operations.MINUS -> {
+                return Pair(
+                    listOf(
+                        Pair("Скільки буде 2 - 2", 0),
+                        Pair("Скільки буде 5 - 3?", 2),
+                        Pair("Яка різниця між 10 і 5?", 5),
+                        Pair("Відніміть від 93 число 25", 68),
+                        Pair("Скільки буде 24 - 4?", 20),
+                    ),
+                    listOf(
+                        mapOf(
+                            "а" to 0,
+                            "б" to -1,
+                            "в" to 1,
+                            "г" to 2,
+                        ),
+                        mapOf(
+                            "а" to 3,
+                            "б" to 2,
+                            "в" to 1,
+                            "г" to 0,
+                        ),
+                        mapOf(
+                            "а" to 4,
+                            "б" to 3,
+                            "в" to 5,
+                            "г" to 6,
+                        ),
+                        mapOf(
+                            "а" to 68,
+                            "б" to 65,
+                            "в" to 67,
+                            "г" to 69,
+                        ),
+                        mapOf(
+                            "а" to 21,
+                            "б" to 20,
+                            "в" to 25,
+                            "г" to 22,
+                        ),
+                    )
+                )
+            }
+
+            Operations.MULTIPLY -> {
+                return Pair(
+                    listOf(
+                        Pair("Скільки буде 2 * 2", 4),
+                        Pair("Скільки буде 5 * 3?", 15),
+                        Pair("Обчисліть 10 * 5", 50),
+                        Pair("Скільки буде 6 * 4?", 24),
+                        Pair("Скільки буде 3 * 33?", 99),
+                    ),
+                    listOf(
+                        mapOf(
+                            "а" to 4,
+                            "б" to 5,
+                            "в" to 3,
+                            "г" to 6,
+                        ),
+                        mapOf(
+                            "а" to 10,
+                            "б" to 15,
+                            "в" to 20,
+                            "г" to 14,
+                        ),
+                        mapOf(
+                            "а" to 15,
+                            "б" to 25,
+                            "в" to 50,
+                            "г" to 55,
+                        ),
+                        mapOf(
+                            "а" to 24,
+                            "б" to 28,
+                            "в" to 22,
+                            "г" to 20,
+                        ),
+                        mapOf(
+                            "а" to 88,
+                            "б" to 77,
+                            "в" to 66,
+                            "г" to 99,
+                        ),
+                    )
+                )
+            }
+        }
+    }
+}
+
 open class UserDataImpl : UserData {
     override fun loadDataUser(fileName: String): MutableList<User> {
         val json = File(fileName).readText()
@@ -99,12 +240,13 @@ open class UserDataImpl : UserData {
         val json = Json.encodeToString(updatedUserListObject)
         File(fileName).writeText(json)
     }
-    override fun getUser(name : String?, password: String?, list: MutableList<User>) : User {
+
+    override fun getUser(name: String?, password: String?, list: MutableList<User>): User {
         return list.find { it.name == name && it.password == password } ?: User()
     }
 
-    override fun getUsers() : MutableList<User> {
-        return  UserList(loadDataUser("users.json")).users
+    override fun getUsers(): MutableList<User> {
+        return UserList(loadDataUser("users.json")).users
     }
 
     override fun saveResults(
@@ -136,25 +278,24 @@ open class UserDataImpl : UserData {
 }
 
 class UserInterfaceImpl : UserInterface, UserDataImpl() {
-    override fun onChekedValid(input: String?, value: String, userList : MutableList<User>) {
+    override fun onChekedValid(input: String?, value: String, userList: MutableList<User>) {
         if (input!!.contains(" ")) {
-            if(value == "name"){
+            if (value == "name") {
                 println("Ім'я не повинно містити пробіли")
-            }
-            else {
+            } else {
                 println("Пароль не повинен містити пробіли")
             }
             registration(userList)
-        } else if(input == "") {
-            if(value == "name"){
+        } else if (input == "") {
+            if (value == "name") {
                 println("Ім'я не повинно бути порожнім")
-            }
-            else {
+            } else {
                 println("Пароль не повинен бути порожнім")
             }
             registration(userList)
         }
     }
+
     override fun registration(userList: MutableList<User>) {
         println("Введіть своє ім'я: ")
         val name = readLine()
@@ -221,11 +362,13 @@ class UserInterfaceImpl : UserInterface, UserDataImpl() {
         saveUserData(user, userList, "users.json", "password", password)
     }
 }
+
 class Menu : Draw {
     private val userData = UserDataImpl()
     private val userInterface = UserInterfaceImpl()
     private var currentUser: User = User()
     private var userList = userData.getUsers()
+    private val testRepository = TestsRepositoryImpl()
     private var userInput: String? = null
 
     override fun drawMenu() {
@@ -243,6 +386,7 @@ class Menu : Draw {
                     userInterface.registration(userList)
                     drawEnter()
                 }
+
                 else -> {
                     println("Введіть корректне значення")
                 }
@@ -257,7 +401,7 @@ class Menu : Draw {
         val list = userList
         if (list.isNotEmpty()) {
             currentUser = userData.getUser(enterName, enterPassword, userList)
-            if(currentUser != User()){
+            if (currentUser != User()) {
                 println("Вітаю ${currentUser.name}!")
                 drawUserInterface()
             } else {
@@ -344,9 +488,18 @@ class Menu : Draw {
             )
             userInput = readLine()
             when (userInput) {
-                "1" -> drawTest(TestsRepositoryImpl.PLUS)
-                "2" -> drawTest(TestsRepositoryImpl.MINUS)
-                "3" -> drawTest(TestsRepositoryImpl.MULTIPLY)
+                "1" -> {
+                    val questions = testRepository.getQustions(Operations.PLUS)
+                    drawTest(questions, Operations.PLUS)
+                }
+                "2" -> {
+                    val questions = testRepository.getQustions(Operations.MINUS)
+                    drawTest(questions, Operations.MINUS)
+                }
+                "3" -> {
+                    val questions = testRepository.getQustions(Operations.MULTIPLY)
+                    drawTest(questions, Operations.MULTIPLY)
+                }
                 "4" -> {
                     val midResult: Float = (currentUser.resPlus + currentUser.resMinus + currentUser.resMultiply) / 3.0F
                     println("Ваша середня оцінка - $midResult ")
@@ -365,33 +518,29 @@ class Menu : Draw {
         }
     }
 
-    private fun showResult(testRepository : TestsRepositoryImpl) {
+    private fun showResult(operand : Operations) {
         val testFinal = "Тест завершено! Ваша оцінка -"
-        when (testRepository) {
-            TestsRepositoryImpl.PLUS -> println("$testFinal ${currentUser.resPlus}")
-            TestsRepositoryImpl.MINUS -> println("$testFinal ${currentUser.resMinus}")
-            TestsRepositoryImpl.MULTIPLY -> println("$testFinal ${currentUser.resMultiply}")
+        when (operand) {
+            Operations.PLUS -> println("$testFinal ${currentUser.resPlus}")
+            Operations.MINUS -> println("$testFinal ${currentUser.resMinus}")
+            Operations.MULTIPLY -> println("$testFinal ${currentUser.resMultiply}")
         }
     }
 
-    override fun drawTest(testRepository: TestsRepositoryImpl) {
-        val userList = UserList(userData.loadDataUser("users.json"))
+    override fun drawTest(questions : Pair<List<Pair<String, Int>>, List<Map<out String?, Int>>>, operand : Operations) {
+        val userList = userData.getUsers()
         var resPlus = currentUser.resPlus
         var resMinus = currentUser.resMinus
         var resMultiply = currentUser.resMultiply
 
-        when (testRepository) {
-            TestsRepositoryImpl.PLUS -> resPlus = 0
-            TestsRepositoryImpl.MINUS -> resMinus = 0
-            TestsRepositoryImpl.MULTIPLY -> resMultiply = 0
+        when (operand) {
+            Operations.PLUS -> resPlus = 0
+            Operations.MINUS -> resMinus = 0
+            Operations.MULTIPLY -> resMultiply = 0
         }
-
-        val questions = testRepository.questions
-        val variants = testRepository.variants
-
-        questions.forEachIndexed { index, pair ->
+        questions.first.forEachIndexed { index, pair ->
             println(pair.first)
-            variants[index].forEach { (key, value) ->
+            questions.second[index].forEach { (key, value) ->
                 println("$key) $value")
             }
 
@@ -403,11 +552,11 @@ class Menu : Draw {
                 }
             } while (userAnswer !in listOf("а", "б", "в", "г"))
 
-            if (variants[index][userAnswer] == questions[index].second) {
-                when (testRepository) {
-                    TestsRepositoryImpl.PLUS -> resPlus += 20
-                    TestsRepositoryImpl.MINUS -> resMinus += 20
-                    TestsRepositoryImpl.MULTIPLY -> resMultiply += 20
+            if (questions.second[index][userAnswer] == questions.first[index].second) {
+                when (operand) {
+                    Operations.PLUS -> resPlus += 20
+                    Operations.MINUS -> resMinus += 20
+                    Operations.MULTIPLY -> resMultiply += 20
                 }
             }
         }
@@ -416,8 +565,8 @@ class Menu : Draw {
         currentUser.resMinus = resMinus
         currentUser.resMultiply = resMultiply
 
-        userData.saveResults(currentUser, userList.users, "users.json", resPlus, resMinus, resMultiply)
-        showResult(testRepository)
+        userData.saveResults(currentUser, userList, "users.json", resPlus, resMinus, resMultiply)
+        showResult(operand)
         drawMenuTests()
     }
 }

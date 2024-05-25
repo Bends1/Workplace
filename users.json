@@ -1,1 +1,1 @@
-{"users":[{"name":"Руслан","password":"123","id":1},{"name":"Миша","password":"123","id":2}]}
+{"users":[{"name":"Руслан","password":"123","id":1,"resPlus":40,"resMinus":40,"resMultiply":100},{"name":"Миша","password":"123","id":2},{"name":"Коля","password":"111","id":3,"resPlus":80,"resMinus":40,"resMultiply":100}]}

@@ -8,11 +8,11 @@ interface Draw {
     fun drawUserInterface()
     fun drawMenuTests()
     fun drawEnter()
-    fun drawTest(n: Int, arr: List<Pair<String, Int>>, variant: List<Map<out String?, Int>>)
+    fun drawTest(testsRepository: TestsRepositoryImpl)
 }
 interface UserData {
     fun loadDataUser(fileName: String): MutableList<User>
-    fun createUser(name: String, password: String, list: MutableList<User>): User
+    fun createUser(name: String?, password: String?, list: MutableList<User>): User
     fun addUser(user: User, users: MutableList<User>)
     fun saveUserData(
         user: User,
@@ -21,7 +21,8 @@ interface UserData {
         operationType: String,
         newValue: String?
     )
-
+    fun getUsers() : MutableList<User>
+    fun getUser(name : String?, password: String?, list: MutableList<User>) : User
     fun saveResults(
         user: User,
         userList: MutableList<User>,
@@ -33,9 +34,14 @@ interface UserData {
 }
 
 interface UserInterface {
-    fun registration(userList: UserList)
-    fun changeName(user: User)
-    fun changePassword(user: User)
+    fun registration(userList: MutableList<User>)
+    fun onNameChange(user: User)
+    fun onPasswordChange(user: User)
+    fun onChekedValid(input : String?, value: String, userList: MutableList<User>)
+}
+interface TestsRepository {
+    val questions : List<Pair<String, Int>>
+    val variants : List<Map<out String?, Int>>
 }
 open class UserDataImpl : UserData {
     override fun loadDataUser(fileName: String): MutableList<User> {
@@ -48,9 +54,8 @@ open class UserDataImpl : UserData {
         }
     }
 
-    override fun createUser(name: String, password: String, list: MutableList<User>): User {
-        val id = list.size - 1
-        return User(name, password, id)
+    override fun createUser(name: String?, password: String?, list: MutableList<User>): User {
+        return User(name, password, list.size - 1)
     }
 
     override fun addUser(user: User, users: MutableList<User>) {
@@ -94,6 +99,13 @@ open class UserDataImpl : UserData {
         val json = Json.encodeToString(updatedUserListObject)
         File(fileName).writeText(json)
     }
+    override fun getUser(name : String?, password: String?, list: MutableList<User>) : User {
+        return list.find { it.name == name && it.password == password } ?: User()
+    }
+
+    override fun getUsers() : MutableList<User> {
+        return  UserList(loadDataUser("users.json")).users
+    }
 
     override fun saveResults(
         user: User,
@@ -124,33 +136,47 @@ open class UserDataImpl : UserData {
 }
 
 class UserInterfaceImpl : UserInterface, UserDataImpl() {
-    override fun registration(userList: UserList) {
-        println("Введіть своє ім'я: ")
-        val name = readLine()
-        if (name == "" || name!!.contains(" ")) {
-            println("Ім'я не повинно містити пробіли")
+    override fun onChekedValid(input: String?, value: String, userList : MutableList<User>) {
+        if (input!!.contains(" ")) {
+            if(value == "name"){
+                println("Ім'я не повинно містити пробіли")
+            }
+            else {
+                println("Пароль не повинен містити пробіли")
+            }
+            registration(userList)
+        } else if(input == "") {
+            if(value == "name"){
+                println("Ім'я не повинно бути порожнім")
+            }
+            else {
+                println("Пароль не повинен бути порожнім")
+            }
             registration(userList)
         }
-        for (i in userList.users.indices) {
-            if (name == userList.users[i].name) {
+    }
+    override fun registration(userList: MutableList<User>) {
+        println("Введіть своє ім'я: ")
+        val name = readLine()
+        onChekedValid(name, "name", userList)
+        userList.forEach {
+            if (name == it.name) {
                 println("Ім'я вже зайнято")
                 registration(userList)
+                return
             }
         }
         println("Введіть свій пароль: ")
         val password = readLine()
-        if (password == "" || password!!.contains(" ")) {
-            println("Пароль не повинен містити пробіли")
-            registration(userList)
-        }
-        val user = createUser(name, password, userList.users)
-        addUser(user, userList.users)
+        onChekedValid(password, "password", userList)
+        val user = createUser(name, password, userList)
+        addUser(user, userList)
         println("Ви зареєструвалися ваше ім'я: ${user.name}, ваш пароль: ${user.password}")
         println("Дякую, що зареєструвалися, тепер увійдіть в аккаунт")
     }
 
-    override fun changeName(user: User) {
-        val userList = UserList(loadDataUser("users.json"))
+    override fun onNameChange(user: User) {
+        val userList = getUsers()
         var isNameAvailable: Boolean
         var name: String?
 
@@ -158,12 +184,12 @@ class UserInterfaceImpl : UserInterface, UserDataImpl() {
             println("Введіть своє нове ім'я: ")
             name = readLine()
             if (name.isNullOrBlank() || name.contains(" ")) {
-                println("Ім'я не повинно містити пробіли")
+                println("Ім'я не повинно містити пробіли та бути пустим")
                 isNameAvailable = false
             } else {
                 isNameAvailable = true
-                for (i in userList.users.indices) {
-                    if (name == userList.users[i].name) {
+                for (i in userList.indices) {
+                    if (name == userList[i].name) {
                         println("Ім'я вже зайнято")
                         isNameAvailable = false
                         break
@@ -174,37 +200,36 @@ class UserInterfaceImpl : UserInterface, UserDataImpl() {
 
         user.name = name
         println("Ваше нове ім'я - $name")
-        saveUserData(user, userList.users, "users.json", "name", name)
+        saveUserData(user, userList, "users.json", "name", name)
     }
 
-    override fun changePassword(user: User) {
+    override fun onPasswordChange(user: User) {
         var password: String?
-        var userList = UserList(loadDataUser("users.json"))
+        var userList = getUsers()
         do {
-            userList = UserList(loadDataUser("users.json"))
+            userList = getUsers()
             println("Введіть свій новий пароль: ")
             password = readLine()
             if (password.isNullOrBlank() || password.contains(" ")) {
-                println("Пароль не повинен містити пробіли")
+                println("Пароль не повинен містити пробіли та бути пустим")
             }
         } while (password.isNullOrBlank() || password.contains(" "))
 
         user.password = password
         println(user.password)
         println("Ваше новий пароль - $password")
-        saveUserData(user, userList.users, "users.json", "password", password)
+        saveUserData(user, userList, "users.json", "password", password)
     }
 }
 class Menu : Draw {
     private val userData = UserDataImpl()
     private val userInterface = UserInterfaceImpl()
-    private val tests = Tests()
     private var currentUser: User = User()
-    private var userList = UserList(userData.loadDataUser("users.json"))
+    private var userList = userData.getUsers()
     private var userInput: String? = null
 
     override fun drawMenu() {
-        userList = UserList(userData.loadDataUser("users.json"))
+        userList = userData.getUsers()
         currentUser = User()
         do {
             println(
@@ -218,7 +243,6 @@ class Menu : Draw {
                     userInterface.registration(userList)
                     drawEnter()
                 }
-
                 else -> {
                     println("Введіть корректне значення")
                 }
@@ -229,13 +253,12 @@ class Menu : Draw {
     override fun drawEnter() {
         currentUser = User()
         val (enterName, enterPassword) = getUserInput()
-        userList = UserList(userData.loadDataUser("users.json"))
-        val list = userList.users
+        userList = userData.getUsers()
+        val list = userList
         if (list.isNotEmpty()) {
-            val user = list.find { it.name == enterName && it.password == enterPassword }
-            if (user != null) {
-                println("Вітаю $enterName!")
-                currentUser = user
+            currentUser = userData.getUser(enterName, enterPassword, userList)
+            if(currentUser != User()){
+                println("Вітаю ${currentUser.name}!")
                 drawUserInterface()
             } else {
                 println("Ім'я чи пароль введені неправильно, спробуйте ще раз")
@@ -285,17 +308,18 @@ class Menu : Draw {
             userInput = readLine()
             when (userInput?.toIntOrNull()) {
                 1 -> {
-                    userInterface.changeName(currentUser)
+                    userInterface.onNameChange(currentUser)
                     drawAccOptions()
                 }
 
                 2 -> {
-                    userInterface.changePassword(currentUser)
+                    userInterface.onPasswordChange(currentUser)
                     drawAccOptions()
                 }
 
                 3 -> {
                     drawMenu()
+
                 }
 
                 4 -> drawUserInterface()
@@ -307,8 +331,8 @@ class Menu : Draw {
     }
 
     override fun drawMenuTests() {
-        userList = UserList(userData.loadDataUser("users.json"))
-        val currentUserData = userList.users.find { it.id == currentUser.id }
+        userList = userData.getUsers()
+        val currentUserData = userList.find { it.id == currentUser.id }
         if (currentUserData != null) {
             currentUser = currentUserData
             println(
@@ -320,9 +344,9 @@ class Menu : Draw {
             )
             userInput = readLine()
             when (userInput) {
-                "1" -> drawTest(1, tests.questionsPlus, tests.variantsPlus)
-                "2" -> drawTest(2, tests.questionsMinus, tests.variantsMinus)
-                "3" -> drawTest(3, tests.questionsMultiply, tests.variantsMultiply)
+                "1" -> drawTest(TestsRepositoryImpl.PLUS)
+                "2" -> drawTest(TestsRepositoryImpl.MINUS)
+                "3" -> drawTest(TestsRepositoryImpl.MULTIPLY)
                 "4" -> {
                     val midResult: Float = (currentUser.resPlus + currentUser.resMinus + currentUser.resMultiply) / 3.0F
                     println("Ваша середня оцінка - $midResult ")
@@ -336,52 +360,54 @@ class Menu : Draw {
                 }
             }
         } else {
-            println("Помилка: дані користувача не були знайдені")
-            drawMenuTests()
+            println("Помилка: дані користувача не були знайдені, зареєструйте новий аккаунт")
+            drawMenu()
         }
     }
 
-    private fun showResult(n: Int) {
+    private fun showResult(testRepository : TestsRepositoryImpl) {
         val testFinal = "Тест завершено! Ваша оцінка -"
-        when (n) {
-            1 -> println("$testFinal ${currentUser.resPlus}")
-            2 -> println("$testFinal ${currentUser.resMinus}")
-            3 -> println("$testFinal ${currentUser.resMultiply}")
+        when (testRepository) {
+            TestsRepositoryImpl.PLUS -> println("$testFinal ${currentUser.resPlus}")
+            TestsRepositoryImpl.MINUS -> println("$testFinal ${currentUser.resMinus}")
+            TestsRepositoryImpl.MULTIPLY -> println("$testFinal ${currentUser.resMultiply}")
         }
     }
 
-    override fun drawTest(n: Int, arr: List<Pair<String, Int>>, variant: List<Map<out String?, Int>>) {
-        userList = UserList(userData.loadDataUser("users.json"))
-        var (resPlus, resMinus, resMultiply) = listOf(
-            currentUser.resPlus,
-            currentUser.resMinus,
-            currentUser.resMultiply
-        )
+    override fun drawTest(testRepository: TestsRepositoryImpl) {
+        val userList = UserList(userData.loadDataUser("users.json"))
+        var resPlus = currentUser.resPlus
+        var resMinus = currentUser.resMinus
+        var resMultiply = currentUser.resMultiply
 
-        when (n) {
-            1 -> resPlus = 0
-            2 -> resMinus = 0
-            3 -> resMultiply = 0
+        when (testRepository) {
+            TestsRepositoryImpl.PLUS -> resPlus = 0
+            TestsRepositoryImpl.MINUS -> resMinus = 0
+            TestsRepositoryImpl.MULTIPLY -> resMultiply = 0
         }
 
-        arr.forEachIndexed { index, pair ->
+        val questions = testRepository.questions
+        val variants = testRepository.variants
+
+        questions.forEachIndexed { index, pair ->
             println(pair.first)
-            variant[index].forEach { (key, value) ->
+            variants[index].forEach { (key, value) ->
                 println("$key) $value")
             }
+
             var userAnswer: String?
             do {
                 userAnswer = readLine()
                 if (userAnswer !in listOf("а", "б", "в", "г")) {
-                    println("Введіть 1 з літер: 'а', 'б', 'в', 'г'")
+                    println("Введіть одну з літер: 'а', 'б', 'в', 'г'")
                 }
             } while (userAnswer !in listOf("а", "б", "в", "г"))
 
-            if (variant[index][userAnswer] == arr[index].second) {
-                when (n) {
-                    1 -> resPlus += 20
-                    2 -> resMinus += 20
-                    3 -> resMultiply += 20
+            if (variants[index][userAnswer] == questions[index].second) {
+                when (testRepository) {
+                    TestsRepositoryImpl.PLUS -> resPlus += 20
+                    TestsRepositoryImpl.MINUS -> resMinus += 20
+                    TestsRepositoryImpl.MULTIPLY -> resMultiply += 20
                 }
             }
         }
@@ -391,7 +417,7 @@ class Menu : Draw {
         currentUser.resMultiply = resMultiply
 
         userData.saveResults(currentUser, userList.users, "users.json", resPlus, resMinus, resMultiply)
-        showResult(n)
+        showResult(testRepository)
         drawMenuTests()
     }
 }

@@ -13,7 +13,7 @@ interface Draw {
 
 interface UserData {
     fun loadDataUser(fileName: String): MutableList<User>
-    fun createUser(name: String?, password: String?, list: MutableList<User>): User
+    fun createUser(name: String?, password: String?, email: String?, list: MutableList<User>): User
     fun addUser(user: User, users: MutableList<User>)
     fun saveUserData(
         user: User,
@@ -24,7 +24,7 @@ interface UserData {
     )
 
     fun getUsers(): MutableList<User>
-    fun getUser(name: String?, password: String?, list: MutableList<User>): User
+    fun getUser(email: String?, password: String?, list: MutableList<User>): User
     fun saveResults(
         user: User,
         userList: MutableList<User>,
@@ -38,8 +38,9 @@ interface UserData {
 interface UserInterface {
     fun registration(userList: MutableList<User>)
     fun onNameChange(user: User)
+    fun onEmailChange(user: User)
     fun onPasswordChange(user: User)
-    fun onChekedValid(input: String?, value: String, userList: MutableList<User>)
+    fun onChekedValid(input: String?, value: String, userList: MutableList<User>) : Boolean
 }
 
 interface TestsRepository {
@@ -195,8 +196,8 @@ open class UserDataImpl : UserData {
         }
     }
 
-    override fun createUser(name: String?, password: String?, list: MutableList<User>): User {
-        return User(name, password, list.size - 1)
+    override fun createUser(name: String?, password: String?,email : String?, list: MutableList<User>): User {
+        return User(name, password, email, list.size - 1)
     }
 
     override fun addUser(user: User, users: MutableList<User>) {
@@ -219,7 +220,7 @@ open class UserDataImpl : UserData {
             when (operationType) {
                 "name" -> {
                     if (it.id == user.id) {
-                        it.copy(name = newValue ?: it.name, password = user.password)
+                        it.copy(name = newValue ?: it.name, password = user.password, email = user.email)
                     } else {
                         it
                     }
@@ -227,12 +228,18 @@ open class UserDataImpl : UserData {
 
                 "password" -> {
                     if (it.id == user.id) {
-                        it.copy(password = newValue ?: it.password, name = user.name)
+                        it.copy(password = newValue ?: it.password, name = user.name, email = user.email)
                     } else {
                         it
                     }
                 }
-
+                "email" -> {
+                    if (it.id == user.id) {
+                        it.copy(email = newValue ?: it.email, name = user.name, password = user.password)
+                    } else {
+                        it
+                    }
+                }
                 else -> it
             }
         }
@@ -241,8 +248,8 @@ open class UserDataImpl : UserData {
         File(fileName).writeText(json)
     }
 
-    override fun getUser(name: String?, password: String?, list: MutableList<User>): User {
-        return list.find { it.name == name && it.password == password } ?: User()
+    override fun getUser(email: String?, password: String?, list: MutableList<User>): User {
+        return list.find { it.email == email && it.password == password } ?: User()
     }
 
     override fun getUsers(): MutableList<User> {
@@ -265,6 +272,7 @@ open class UserDataImpl : UserData {
                     resMultiply = resMultiply,
                     password = user.password,
                     name = user.name,
+                    email = user.email,
                 )
             } else {
                 it
@@ -278,41 +286,53 @@ open class UserDataImpl : UserData {
 }
 
 class UserInterfaceImpl : UserInterface, UserDataImpl() {
-    override fun onChekedValid(input: String?, value: String, userList: MutableList<User>) {
-        if (input!!.contains(" ")) {
+    override fun onChekedValid(input: String?, value: String, userList: MutableList<User>) : Boolean {
+        if (input!!.contains(" ") || input == "") {
             if (value == "name") {
-                println("Ім'я не повинно містити пробіли")
-            } else {
-                println("Пароль не повинен містити пробіли")
+                println("Ім'я не повинно містити пробілів чи бути порожнім")
+                return false
+            } else if (value == "password"){
+                println("Пароль не повинен бути порожнім чи містити пробіли")
+                return false
             }
-            registration(userList)
-        } else if (input == "") {
-            if (value == "name") {
-                println("Ім'я не повинно бути порожнім")
-            } else {
-                println("Пароль не повинен бути порожнім")
-            }
-            registration(userList)
         }
+        if(value == "email"){
+            val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$".toRegex()
+            if(!emailRegex.matches(input)){
+                println("Такої елетронної адреси не існує")
+                return false
+            }
+            return true
+        }
+        return true
     }
 
     override fun registration(userList: MutableList<User>) {
-        println("Введіть своє ім'я: ")
-        val name = readLine()
-        onChekedValid(name, "name", userList)
-        userList.forEach {
-            if (name == it.name) {
-                println("Ім'я вже зайнято")
-                registration(userList)
-                return
+        var name : String?
+        var password : String?
+        var email : String?
+        do{
+            println("Введіть своє ім'я: ")
+            name = readLine()
+        }while(!onChekedValid(name, "name", userList))
+        do{
+            var isValid = true
+            println("Введіть свій емейл: ")
+            email = readln()
+            userList.forEach {
+                if (email == it.email) {
+                    println("Електронна адреса вже зайнята")
+                    isValid = false
+                }
             }
-        }
-        println("Введіть свій пароль: ")
-        val password = readLine()
-        onChekedValid(password, "password", userList)
-        val user = createUser(name, password, userList)
+        }while(!onChekedValid(email, "email", userList) || !isValid)
+        do{
+            println("Введіть свій пароль: ")
+            password = readLine()
+        }while(!onChekedValid(password, "password", userList))
+        val user = createUser(name, password, email, userList)
         addUser(user, userList)
-        println("Ви зареєструвалися ваше ім'я: ${user.name}, ваш пароль: ${user.password}")
+        println("Ви зареєструвалися ваше ім'я: ${user.name}, ваша елетронна адреса: ${user.email}, ваш пароль: ${user.password}")
         println("Дякую, що зареєструвалися, тепер увійдіть в аккаунт")
     }
 
@@ -327,11 +347,33 @@ class UserInterfaceImpl : UserInterface, UserDataImpl() {
             if (name.isNullOrBlank() || name.contains(" ")) {
                 println("Ім'я не повинно містити пробіли та бути пустим")
                 isNameAvailable = false
+            } else isNameAvailable = true
+        } while (!isNameAvailable)
+
+        user.name = name
+        println("Ваше нове ім'я - $name")
+        saveUserData(user, userList, "users.json", "name", name)
+    }
+    override fun onEmailChange(user: User) {
+        val userList = getUsers()
+        var isNameAvailable: Boolean
+        var email: String?
+
+        do {
+            println("Введіть свою нову електронну адресу: ")
+            email = readLine()
+            val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$".toRegex()
+            if(email == user.email){
+                break
+            }
+            if(!email?.let { emailRegex.matches(it) }!!){
+                println("Такої елетронної адреси не існує")
+                isNameAvailable = false
             } else {
                 isNameAvailable = true
                 for (i in userList.indices) {
-                    if (name == userList[i].name) {
-                        println("Ім'я вже зайнято")
+                    if (email == userList[i].email) {
+                        println("Електронна адреса вже зайнята")
                         isNameAvailable = false
                         break
                     }
@@ -339,9 +381,9 @@ class UserInterfaceImpl : UserInterface, UserDataImpl() {
             }
         } while (!isNameAvailable)
 
-        user.name = name
-        println("Ваше нове ім'я - $name")
-        saveUserData(user, userList, "users.json", "name", name)
+        user.email = email
+        println("Ваша нова електронна адреса - $email")
+        saveUserData(user, userList, "users.json", "email", email)
     }
 
     override fun onPasswordChange(user: User) {
@@ -386,7 +428,6 @@ class Menu : Draw {
                     userInterface.registration(userList)
                     drawEnter()
                 }
-
                 else -> {
                     println("Введіть корректне значення")
                 }
@@ -396,16 +437,16 @@ class Menu : Draw {
 
     override fun drawEnter() {
         currentUser = User()
-        val (enterName, enterPassword) = getUserInput()
+        val (enterEmail, enterPassword) = getUserInput()
         userList = userData.getUsers()
         val list = userList
         if (list.isNotEmpty()) {
-            currentUser = userData.getUser(enterName, enterPassword, userList)
+            currentUser = userData.getUser(enterEmail, enterPassword, userList)
             if (currentUser != User()) {
                 println("Вітаю ${currentUser.name}!")
                 drawUserInterface()
             } else {
-                println("Ім'я чи пароль введені неправильно, спробуйте ще раз")
+                println("Електронна адреса чи пароль введені неправильно, спробуйте ще раз")
                 drawMenu()
             }
         } else {
@@ -416,7 +457,7 @@ class Menu : Draw {
     }
 
     private fun getUserInput(): Pair<String?, String?> {
-        println("Введіть ваше ім'я: ")
+        println("Введіть вашу електронну адресу: ")
         val enterName = readLine()
         println("Введіть ваш пароль: ")
         val enterPassword = readLine()
@@ -446,8 +487,9 @@ class Menu : Draw {
             println(
                 "Щоб змінити ім'я натисніть - 1\n" +
                         "Щоб змінити пароль натисніть - 2\n" +
-                        "Щоб вийти з своєї сессії натисніть - 3\n" +
-                        "Назад - 4"
+                        "Щоб змінити свій емеіл натисніть - 3\n" +
+                        "Щоб вийти з своєї сессії натисніть - 4\n" +
+                        "Назад - 5"
             )
             userInput = readLine()
             when (userInput?.toIntOrNull()) {
@@ -460,18 +502,21 @@ class Menu : Draw {
                     userInterface.onPasswordChange(currentUser)
                     drawAccOptions()
                 }
-
                 3 -> {
-                    drawMenu()
-
+                    userInterface.onEmailChange(currentUser)
+                    drawAccOptions()
                 }
 
-                4 -> drawUserInterface()
+                4 -> {
+                    drawMenu()
+                }
+
+                5 -> drawUserInterface()
                 else -> {
                     println("Введіть корректне значення")
                 }
             }
-        } while (userInput != "1" && userInput != "2" && userInput != "3" && userInput != "4")
+        } while (userInput != "1" && userInput != "2" && userInput != "3" && userInput != "4" && userInput != "5")
     }
 
     override fun drawMenuTests() {
